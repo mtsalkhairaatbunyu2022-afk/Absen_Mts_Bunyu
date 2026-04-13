@@ -1,0 +1,104 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: students
+    // Fields: name (string), nis (string), class (string), email (string), status (string), createdAt (timestamp)
+    //
+    // Collection: teachers
+    // Fields: name (string), nip (string), subject (string), email (string), createdAt (timestamp)
+    //
+    // Collection: schedules
+    // Fields: subject (string), teacherId (string), class (string), day (string), startTime (string), endTime (string)
+    //
+    // Collection: attendance
+    // Fields: studentId (string), date (string), status (string), remarks (string)
+    //
+    // Collection: grades
+    // Fields: studentId (string), subject (string), gradeLevel (string), dailyGrades (list), testGrades (list), practicalGrades (list), date (string)
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.email == "mtsalkhairaatbunyu2022@gmail.com" && request.auth.token.email_verified == true);
+    }
+
+    function isValidStudent(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.nis is string && data.nis.size() > 0 &&
+             data.class is string &&
+             (!('email' in data) || data.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"));
+    }
+
+    function isValidTeacher(data) {
+      return data.name is string && data.name.size() > 0 &&
+             data.nip is string &&
+             data.subject is string;
+    }
+
+    function isValidSchedule(data) {
+      return data.subject is string &&
+             data.teacherId is string &&
+             data.class is string &&
+             data.day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    }
+
+    function isValidAttendance(data) {
+      return data.studentId is string &&
+             data.date is string &&
+             data.status in ['H', 'A', 'I', 'S'];
+    }
+
+    function isValidGrade(data) {
+      return data.studentId is string &&
+             data.subject is string &&
+             data.gradeLevel is string &&
+             (!('dailyGrades' in data) || data.dailyGrades is list) &&
+             (!('testGrades' in data) || data.testGrades is list) &&
+             (!('practicalGrades' in data) || data.practicalGrades is list);
+    }
+
+    match /students/{studentId} {
+      allow read: if true;
+      allow create, update: if isValidStudent(request.resource.data);
+      allow delete: if true;
+    }
+
+    match /teachers/{teacherId} {
+      allow read: if true;
+      allow create, update: if isValidTeacher(request.resource.data);
+      allow delete: if true;
+    }
+
+    match /schedules/{scheduleId} {
+      allow read: if true;
+      allow create, update: if isValidSchedule(request.resource.data);
+      allow delete: if true;
+    }
+
+    match /attendance/{attendanceId} {
+      allow read: if true;
+      allow create, update: if isValidAttendance(request.resource.data);
+      allow delete: if true;
+    }
+
+    match /grades/{gradeId} {
+      allow read: if true;
+      allow create, update: if isValidGrade(request.resource.data);
+      allow delete: if true;
+    }
+    
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+  }
+}

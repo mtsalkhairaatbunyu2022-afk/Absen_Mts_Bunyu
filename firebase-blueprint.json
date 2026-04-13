@@ -1,0 +1,99 @@
+{
+  "entities": {
+    "student": {
+      "title": "Student",
+      "description": "Data profil siswa",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "nis": { "type": "string", "description": "Nomor Induk Siswa" },
+        "class": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "status": { "type": "string", "enum": ["active", "inactive"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "nis", "class"]
+    },
+    "teacher": {
+      "title": "Teacher",
+      "description": "Data profil guru",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "nip": { "type": "string", "description": "Nomor Induk Pegawai" },
+        "subject": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "nip", "subject"]
+    },
+    "schedule": {
+      "title": "Schedule",
+      "description": "Jadwal mata pelajaran",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "subject": { "type": "string" },
+        "teacherId": { "type": "string" },
+        "class": { "type": "string" },
+        "day": { "type": "string", "enum": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" }
+      },
+      "required": ["subject", "teacherId", "class", "day", "startTime", "endTime"]
+    },
+    "attendance": {
+      "title": "Attendance",
+      "description": "Data absensi harian siswa kelas 9",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "studentId": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["H", "A", "I", "S"] },
+        "remarks": { "type": "string" }
+      },
+      "required": ["studentId", "date", "status"]
+    },
+    "grade": {
+      "title": "Grade",
+      "description": "Rekap nilai harian, ulangan, dan praktek",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "studentId": { "type": "string" },
+        "subject": { "type": "string" },
+        "gradeLevel": { "type": "string" },
+        "dailyGrades": { "type": "array", "items": { "type": "number" }, "description": "Nilai Harian 1-10" },
+        "testGrades": { "type": "array", "items": { "type": "number" }, "description": "Ulangan Harian 1-10" },
+        "practicalGrades": { "type": "array", "items": { "type": "number" }, "description": "Nilai Praktek 1-5" },
+        "date": { "type": "string", "format": "date" }
+      },
+      "required": ["studentId", "subject", "gradeLevel"]
+    }
+  },
+  "firestore": {
+    "/students/{studentId}": {
+      "schema": "student",
+      "description": "Koleksi data siswa"
+    },
+    "/teachers/{teacherId}": {
+      "schema": "teacher",
+      "description": "Koleksi data guru"
+    },
+    "/schedules/{scheduleId}": {
+      "schema": "schedule",
+      "description": "Koleksi jadwal pelajaran"
+    },
+    "/attendance/{attendanceId}": {
+      "schema": "attendance",
+      "description": "Koleksi absensi siswa"
+    },
+    "/grades/{gradeId}": {
+      "schema": "grade",
+      "description": "Koleksi nilai harian"
+    }
+  }
+}
