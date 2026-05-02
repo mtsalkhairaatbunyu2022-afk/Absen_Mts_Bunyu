@@ -127,11 +127,13 @@ const Card = ({ children, className }: { children: React.ReactNode, className?: 
 
 export default function App() {
   const [isDashboard, setIsDashboard] = useState(true);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'class-7' | 'class-8' | 'class-9'>('dashboard');
-  const [subTab, setSubTab] = useState<'attendance' | 'grades' | 'attendance-rekap'>('attendance');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'class-7' | 'class-8' | 'class-9' | 'settings'>('dashboard');
+  const [subTab, setSubTab] = useState<'attendance' | 'grades' | 'attendance-rekap-bulanan' | 'attendance-rekap-semester'>('attendance');
   const [students, setStudents] = useState<Student[]>([]);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [grades, setGrades] = useState<Grade[]>([]);
+  const [appLogo, setAppLogo] = useState<string | null>(null);
+  const [settingsId, setSettingsId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
@@ -446,10 +448,49 @@ export default function App() {
       setGrades(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Grade)));
     }, (err) => console.error("Grades error:", err));
 
+    const qSettings = query(collection(db, 'appSettings'));
+    const unsubSettings = onSnapshot(qSettings, (snapshot) => {
+      if (!snapshot.empty) {
+        const docSettings = snapshot.docs[0];
+        setSettingsId(docSettings.id);
+        const data = docSettings.data();
+        const logo = data.logoUrl || null;
+        setAppLogo(logo);
+        
+        // Dynamic update for browser icons
+        if (logo) {
+          const favicon = document.getElementById('dynamic-favicon') as HTMLLinkElement;
+          const appleIcon = document.getElementById('dynamic-apple-icon') as HTMLLinkElement;
+          if (favicon) favicon.href = logo;
+          if (appleIcon) appleIcon.href = logo;
+
+          // Advanced: Dynamic Manifest for PWA Install Icon
+          const manifest = {
+            "name": "MTs Al-Khairaat Bunyu",
+            "short_name": "MTs Bunyu",
+            "start_url": ".",
+            "display": "standalone",
+            "background_color": "#ffffff",
+            "theme_color": "#4f46e5",
+            "icons": [
+              { "src": logo, "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+              { "src": logo, "sizes": "512x512", "type": "image/png" }
+            ]
+          };
+          const stringManifest = JSON.stringify(manifest);
+          const blob = new Blob([stringManifest], {type: 'application/json'});
+          const manifestURL = URL.createObjectURL(blob);
+          const manifestTag = document.querySelector('link[rel="manifest"]') as HTMLLinkElement;
+          if (manifestTag) manifestTag.href = manifestURL;
+        }
+      }
+    }, (err) => console.error("Settings error:", err));
+
     return () => {
       unsubStudents();
       unsubAttendance();
       unsubGrades();
+      unsubSettings();
     };
   }, []);
 
@@ -622,8 +663,12 @@ export default function App() {
           className="bg-white p-8 md:p-12 rounded-[2rem] md:rounded-[3rem] shadow-2xl shadow-indigo-100 border border-slate-100 max-w-lg w-full text-center relative"
         >
           <div className="mb-6 md:mb-8 relative">
-            <div className="w-24 h-24 md:w-32 md:h-32 bg-indigo-600 rounded-[2rem] md:rounded-[2.5rem] flex items-center justify-center mx-auto shadow-xl shadow-indigo-200 rotate-12 hover:rotate-0 transition-transform duration-500">
-              <GraduationCap size={48} className="text-white md:size-16 -rotate-12 group-hover:rotate-0 transition-transform duration-500" />
+            <div className="w-24 h-24 md:w-32 md:h-32 bg-indigo-600 rounded-[2rem] md:rounded-[2.5rem] flex items-center justify-center mx-auto shadow-xl shadow-indigo-200 rotate-12 hover:rotate-0 transition-transform duration-500 overflow-hidden">
+              {appLogo ? (
+                <img src={appLogo} alt="Logo" className="w-full h-full object-contain -rotate-12 group-hover:rotate-0 transition-transform duration-500" />
+              ) : (
+                <GraduationCap size={48} className="text-white md:size-16 -rotate-12 group-hover:rotate-0 transition-transform duration-500" />
+              )}
             </div>
             <div className="absolute -bottom-1 -right-1 md:-bottom-2 md:-right-2 w-10 h-10 md:w-12 md:h-12 bg-emerald-500 rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg text-white">
               <ClipboardCheck size={20} className="md:size-6" />
@@ -633,6 +678,15 @@ export default function App() {
           <h1 className="text-4xl md:text-5xl font-black text-slate-900 mb-3 md:mb-4 tracking-tight">
             MTs Al-Khairaat <span className="text-indigo-600">Bunyu</span>
           </h1>
+          <div className="mb-6 flex justify-center">
+            {appLogo ? (
+              <img src={appLogo} alt="Logo" className="w-24 h-24 object-contain" />
+            ) : (
+              <div className="w-24 h-24 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-100">
+                <GraduationCap size={48} className="text-white" />
+              </div>
+            )}
+          </div>
           <p className="text-slate-500 text-base md:text-lg mb-8 md:mb-10 font-medium leading-relaxed">
             Sistem Manajemen Madrasah Modern.<br className="hidden md:block" />
             Kelola data siswa, absensi, dan nilai dengan mudah.
@@ -900,8 +954,12 @@ export default function App() {
         )}
       >
         <div className={cn("p-6 flex items-center gap-3 mb-4 overflow-hidden whitespace-nowrap", !isSidebarOpen && "justify-center px-0")}>
-          <div className="min-w-[40px] w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-indigo-100">
-            <GraduationCap size={24} className="text-white" />
+          <div className="min-w-[40px] w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-indigo-100 overflow-hidden">
+            {appLogo ? (
+              <img src={appLogo} alt="Logo" className="w-full h-full object-cover" />
+            ) : (
+              <GraduationCap size={24} className="text-white" />
+            )}
           </div>
           {isSidebarOpen && <span className="text-xl font-bold text-slate-900">MTs Al-Khairaat</span>}
         </div>
@@ -923,7 +981,7 @@ export default function App() {
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mata Pelajaran</p>
           </div>
           <SidebarItem 
-            icon={GraduationCap} 
+            icon={appLogo ? () => <img src={appLogo} className="w-5 h-5 object-contain" /> : GraduationCap} 
             label={isSidebarOpen ? "Kelas 7" : "7"} 
             active={activeTab === 'class-7'} 
             onClick={() => {
@@ -932,7 +990,7 @@ export default function App() {
             }} 
           />
           <SidebarItem 
-            icon={GraduationCap} 
+            icon={appLogo ? () => <img src={appLogo} className="w-5 h-5 object-contain" /> : GraduationCap} 
             label={isSidebarOpen ? "Kelas 8" : "8"} 
             active={activeTab === 'class-8'} 
             onClick={() => {
@@ -951,6 +1009,15 @@ export default function App() {
               setActiveTab('class-9');
               setSelectedGradeLevel('9');
             }} 
+          />
+          <div className="pt-4 pb-2 px-4">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pengaturan</p>
+          </div>
+          <SidebarItem 
+            icon={Settings} 
+            label={isSidebarOpen ? "Pengaturan Logo" : ""} 
+            active={activeTab === 'settings'} 
+            onClick={() => setActiveTab('settings')} 
           />
         </nav>
 
@@ -1046,8 +1113,12 @@ export default function App() {
             >
               {/* Large Logo Section */}
               <div className="flex flex-col items-center gap-6">
-                <div className="w-32 h-32 md:w-48 md:h-48 bg-indigo-600 rounded-[2.5rem] md:rounded-[3.5rem] flex items-center justify-center shadow-2xl shadow-indigo-200 rotate-6 hover:rotate-0 transition-transform duration-500">
-                  <GraduationCap size={64} className="text-white md:size-32 -rotate-6 group-hover:rotate-0 transition-transform duration-500" />
+                <div className="w-32 h-32 md:w-48 md:h-48 bg-indigo-600 rounded-[2.5rem] md:rounded-[3.5rem] flex items-center justify-center shadow-2xl shadow-indigo-200 rotate-6 hover:rotate-0 transition-transform duration-500 overflow-hidden">
+                  {appLogo ? (
+                    <img src={appLogo} alt="Logo" className="w-full h-full object-contain -rotate-6 group-hover:rotate-0 transition-transform duration-500" />
+                  ) : (
+                    <GraduationCap size={64} className="text-white md:size-32 -rotate-6 group-hover:rotate-0 transition-transform duration-500" />
+                  )}
                 </div>
                 <div className="text-center">
                   <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">
@@ -1335,6 +1406,121 @@ export default function App() {
             </motion.div>
           )}
 
+          {activeTab === 'settings' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-6"
+            >
+              <Card className="p-8 max-w-2xl mx-auto mt-8">
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="p-3 bg-indigo-100 text-indigo-600 rounded-xl">
+                    <Settings size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900">Pengaturan Logo Madrasah</h3>
+                    <p className="text-sm text-slate-500">Ubah logo yang tampil di sidebar dan halaman utama</p>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="flex justify-center flex-col items-center gap-4">
+                    <div className="relative group">
+                      <div className="w-32 h-32 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden">
+                        {appLogo ? (
+                          <img src={appLogo} alt="Preview Logo" className="w-full h-full object-contain" />
+                        ) : (
+                          <GraduationCap size={48} className="text-slate-300" />
+                        )}
+                      </div>
+                      <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-2xl">
+                        <FileUp className="text-white" size={24} />
+                        <input 
+                          type="file" 
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              if (file.size > 1024 * 1024) { // Limiting to 1MB for Firestore string storage
+                                setToast({ message: "Ukuran gambar terlalu besar (maks 1MB)", type: 'error' });
+                                return;
+                              }
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                setAppLogo(reader.result as string);
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+                    <p className="text-xs text-slate-400">Klik gambar untuk upload (Format: PNG, JPG, maks 1MB)</p>
+                  </div>
+
+                  <div className="pt-4 flex flex-col items-center gap-4">
+                    <button 
+                      onClick={async () => {
+                        setIsSaving(true);
+                        try {
+                          if (settingsId) {
+                            await updateDoc(doc(db, 'appSettings', settingsId), {
+                              logoUrl: appLogo,
+                              updatedAt: serverTimestamp()
+                            });
+                          } else {
+                            await addDoc(collection(db, 'appSettings'), {
+                              logoUrl: appLogo,
+                              updatedAt: serverTimestamp()
+                            });
+                          }
+                          setToast({ message: "Logo berhasil disimpan!", type: 'success' });
+                        } catch (err) {
+                          console.error("Save settings error:", err);
+                          setToast({ message: "Gagal menyimpan logo ke database.", type: 'error' });
+                        } finally {
+                          setIsSaving(false);
+                        }
+                      }}
+                      disabled={isSaving || !appLogo}
+                      className="w-full bg-indigo-600 text-white px-6 py-3 rounded-xl text-sm font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                    >
+                      {isSaving ? <RotateCcw className="animate-spin" size={18} /> : <Save size={18} />}
+                      Terapkan Perubahan Logo
+                    </button>
+                  </div>
+
+                  <div className="pt-6 border-t border-slate-100">
+                    <button 
+                      onClick={async () => {
+                        if (settingsId) {
+                          setIsSaving(true);
+                          try {
+                            await updateDoc(doc(db, 'appSettings', settingsId), {
+                              logoUrl: null,
+                              updatedAt: serverTimestamp()
+                            });
+                            setAppLogo(null);
+                            setToast({ message: "Logo dikembalikan ke standar.", type: 'success' });
+                          } catch (err) {
+                            setToast({ message: "Gagal menghapus logo.", type: 'error' });
+                          } finally {
+                            setIsSaving(false);
+                          }
+                        }
+                      }}
+                      className="text-slate-400 hover:text-red-500 text-xs font-bold transition-all flex items-center gap-2"
+                    >
+                      <Trash2 size={14} />
+                      Kembalikan ke Logo Standar
+                    </button>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+          )}
+
           {(activeTab === 'class-7' || activeTab === 'class-8' || (activeTab === 'class-9' && subTab === 'grades')) && (
             <motion.div
               key="grades"
@@ -1351,10 +1537,16 @@ export default function App() {
                     Absensi
                   </button>
                   <button 
-                    onClick={() => setSubTab('attendance-rekap')}
-                    className={cn("px-4 md:px-6 py-2 rounded-xl text-xs md:text-sm font-bold transition-all", subTab === 'attendance-rekap' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" : "text-slate-500 hover:bg-slate-50")}
+                    onClick={() => setSubTab('attendance-rekap-bulanan')}
+                    className={cn("px-4 md:px-6 py-2 rounded-xl text-xs md:text-sm font-bold transition-all", subTab === 'attendance-rekap-bulanan' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" : "text-slate-500 hover:bg-slate-50")}
                   >
-                    Rekap Absen
+                    Rekap Bulanan
+                  </button>
+                  <button 
+                    onClick={() => setSubTab('attendance-rekap-semester')}
+                    className={cn("px-4 md:px-6 py-2 rounded-xl text-xs md:text-sm font-bold transition-all", subTab === 'attendance-rekap-semester' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" : "text-slate-500 hover:bg-slate-50")}
+                  >
+                    Rekap Semester
                   </button>
                   <button 
                     onClick={() => setSubTab('grades')}
@@ -1566,7 +1758,7 @@ export default function App() {
             </motion.div>
           )}
 
-          {activeTab === 'class-9' && (subTab === 'attendance' || subTab === 'attendance-rekap') && (
+          {activeTab === 'class-9' && (subTab === 'attendance' || subTab === 'attendance-rekap-bulanan' || subTab === 'attendance-rekap-semester') && (
             <motion.div
               key={subTab}
               initial={{ opacity: 0, x: 20 }}
@@ -1581,10 +1773,16 @@ export default function App() {
                   Absensi
                 </button>
                 <button 
-                  onClick={() => setSubTab('attendance-rekap')}
-                  className={cn("px-4 md:px-6 py-2 rounded-xl text-xs md:text-sm font-bold transition-all", subTab === 'attendance-rekap' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" : "text-slate-500 hover:bg-slate-50")}
+                  onClick={() => setSubTab('attendance-rekap-bulanan')}
+                  className={cn("px-4 md:px-6 py-2 rounded-xl text-xs md:text-sm font-bold transition-all", subTab === 'attendance-rekap-bulanan' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" : "text-slate-500 hover:bg-slate-50")}
                 >
-                  Rekap Absen
+                  Rekap Bulanan
+                </button>
+                <button 
+                  onClick={() => setSubTab('attendance-rekap-semester')}
+                  className={cn("px-4 md:px-6 py-2 rounded-xl text-xs md:text-sm font-bold transition-all", subTab === 'attendance-rekap-semester' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" : "text-slate-500 hover:bg-slate-50")}
+                >
+                  Rekap Semester
                 </button>
                 <button 
                   onClick={() => setSubTab('grades')}
@@ -1747,16 +1945,33 @@ export default function App() {
                 <>
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                     <div>
-                      <h3 className="text-xl font-bold text-slate-900">Rekapitulasi Absensi Kelas 9</h3>
-                      <p className="text-sm text-slate-500">Total kehadiran seluruh siswa</p>
+                      <h3 className="text-xl font-bold text-slate-900">
+                        {subTab === 'attendance-rekap-bulanan' ? "Rekapitulasi Absensi Bulanan (Kelas 9)" : "Rekapitulasi Absensi Per Semester (Kelas 9)"}
+                      </h3>
+                      <p className="text-sm text-slate-500">
+                        {subTab === 'attendance-rekap-bulanan' 
+                          ? `Bulan: ${new Date(selectedDate).toLocaleString('id-ID', { month: 'long', year: 'numeric' })}` 
+                          : `Semester: ${new Date(selectedDate).getMonth() >= 6 ? '1 (Ganjil)' : '2 (Genap)'} | Tahun: ${new Date(selectedDate).getFullYear()}`
+                        }
+                      </p>
                     </div>
-                    <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-100 shadow-sm">
-                      <button onClick={() => handleExportExcel('attendance')} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all" title="Export Excel">
-                        <Download size={18} />
-                      </button>
-                      <button onClick={() => handleExportWord('attendance')} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Export Word">
-                        <Download size={18} />
-                      </button>
+                    <div className="flex items-center gap-2">
+                      {subTab === 'attendance-rekap-bulanan' && (
+                        <input 
+                          type="month" 
+                          value={selectedDate.substring(0, 7)}
+                          onChange={(e) => setSelectedDate(`${e.target.value}-01`)}
+                          className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-sm font-medium focus:outline-none"
+                        />
+                      )}
+                      <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-100 shadow-sm">
+                        <button onClick={() => handleExportExcel('attendance')} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all" title="Export Excel">
+                          <Download size={18} />
+                        </button>
+                        <button onClick={() => handleExportWord('attendance')} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Export Word">
+                          <Download size={18} />
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -1778,15 +1993,27 @@ export default function App() {
                           {students
                             .filter(s => s.class === '9')
                             .map((student, index) => {
-                              const otherRecords = attendance.filter(a => a.studentId === student.id && a.date !== selectedDate);
-                              const record = attendance.find(a => a.studentId === student.id && a.date === selectedDate);
-                              const currentStatus = pendingAttendance[student.id] || record?.status;
+                              const filterAttendance = (a: any) => {
+                                const aDate = new Date(a.date);
+                                const sDate = new Date(selectedDate);
+                                if (subTab === 'attendance-rekap-bulanan') {
+                                  return aDate.getMonth() === sDate.getMonth() && aDate.getFullYear() === sDate.getFullYear();
+                                } else {
+                                  const sMonth = sDate.getMonth();
+                                  const aMonth = aDate.getMonth();
+                                  const sSemester = sMonth >= 6 ? 1 : 2; // 1: Jul-Dec, 2: Jan-Jun
+                                  const aSemester = aMonth >= 6 ? 1 : 2;
+                                  return sSemester === aSemester && aDate.getFullYear() === sDate.getFullYear();
+                                }
+                              };
 
+                              const filteredAttendance = attendance.filter(a => a.studentId === student.id && filterAttendance(a));
+                              
                               const counts = {
-                                H: otherRecords.filter(r => r.status === 'H').length + (currentStatus === 'H' ? 1 : 0),
-                                A: otherRecords.filter(r => r.status === 'A').length + (currentStatus === 'A' ? 1 : 0),
-                                I: otherRecords.filter(r => r.status === 'I').length + (currentStatus === 'I' ? 1 : 0),
-                                S: otherRecords.filter(r => r.status === 'S').length + (currentStatus === 'S' ? 1 : 0),
+                                H: filteredAttendance.filter(r => r.status === 'H').length,
+                                A: filteredAttendance.filter(r => r.status === 'A').length,
+                                I: filteredAttendance.filter(r => r.status === 'I').length,
+                                S: filteredAttendance.filter(r => r.status === 'S').length,
                               };
                               const total = counts.H + counts.A + counts.I + counts.S;
 

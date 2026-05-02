@@ -67,6 +67,11 @@ service cloud.firestore {
              (!('practicalGrades' in data) || data.practicalGrades is list);
     }
 
+    function isValidSettings(data) {
+      return (!('logoUrl' in data) || data.logoUrl is string) &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp || data.updatedAt == null);
+    }
+
     match /students/{studentId} {
       allow read: if true;
       allow create, update: if isValidStudent(request.resource.data);
@@ -99,6 +104,11 @@ service cloud.firestore {
     
     match /users/{userId} {
       allow read, write: if true;
+    }
+
+    match /appSettings/{settingsId} {
+      allow read: if true;
+      allow write: if isValidSettings(request.resource.data);
     }
   }
 }

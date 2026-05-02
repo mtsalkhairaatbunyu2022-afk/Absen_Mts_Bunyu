@@ -72,6 +72,15 @@
         "date": { "type": "string", "format": "date" }
       },
       "required": ["studentId", "subject", "gradeLevel"]
+    },
+    "appSettings": {
+      "title": "App Settings",
+      "description": "Pengaturan konfigurasi aplikasi",
+      "type": "object",
+      "properties": {
+        "logoUrl": { "type": "string", "description": "URL logo aplikasi" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "firestore": {
@@ -94,6 +103,10 @@
     "/grades/{gradeId}": {
       "schema": "grade",
       "description": "Koleksi nilai harian"
+    },
+    "/appSettings/{settingsId}": {
+      "schema": "appSettings",
+      "description": "Koleksi pengaturan aplikasi"
     }
   }
 }

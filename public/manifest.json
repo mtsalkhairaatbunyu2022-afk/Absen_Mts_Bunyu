@@ -1,0 +1,22 @@
+{
+  "name": "MTs Al-Khairaat Bunyu",
+  "short_name": "MTs Bunyu",
+  "description": "Sistem Manajemen Madrasah Modern MTs Al-Khairaat Bunyu.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "https://picsum.photos/seed/school-logo/192/192",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://picsum.photos/seed/school-logo/512/512",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
